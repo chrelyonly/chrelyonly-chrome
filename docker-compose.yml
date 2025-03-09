@@ -1,0 +1,19 @@
+services:
+  java-chrome-app:
+    build:
+      dockerfile: Dockerfile
+    container_name: java-chrome-app-api
+#    ports:
+#      - "18080:18080"
+#      - "60001:60001"
+#      - "1883:1883"
+    networks:
+      - my-network
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /www/dk_project/dk_app/java-chrome-app-api/app:/app
+networks:
+  my-network:
+    name: wechat-api
+    enable_ipv6: true
+    driver: bridge
