@@ -20,7 +20,7 @@ public class ChrelyonlyChromeApplication {
 		// 配置 ChromeOptions
 		ChromeOptions options = new ChromeOptions();
 //		options.setBinary("/app/chrome/chrome"); // 设置 Chrome 可执行文件路径
-		options.addArguments("--headless"); // 无头模式
+//		options.addArguments("--headless"); // 无头模式
 		options.addArguments("--window-size=1920,1080"); // 设置窗口大小
 
 		// 设置远程 WebDriver 连接地址
@@ -46,7 +46,7 @@ public class ChrelyonlyChromeApplication {
 			System.out.println("Failed to save screenshot: " + e.getMessage());
 		} finally {
 			// 关闭浏览器
-			driver.quit();
+//			driver.quit();
 		}
 
 	}
