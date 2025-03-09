@@ -3,16 +3,18 @@ package cn.chrelyonly.chrome.chrelyonlychrome;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 
 public class ChrelyonlyChromeApplication {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws MalformedURLException {
 		// 设置 ChromeDriver 路径（根据你的实际情况设置）
 //		System.setProperty("webdriver.chrome.driver", "/app/chrome/chromedriver");
 		// 配置 ChromeOptions
@@ -20,8 +22,11 @@ public class ChrelyonlyChromeApplication {
 //		options.setBinary("/app/chrome/chrome"); // 设置 Chrome 可执行文件路径
 		options.addArguments("--headless"); // 无头模式
 		options.addArguments("--window-size=1920,1080"); // 设置窗口大小
+
+		// 设置远程 WebDriver 连接地址
+		URL remoteUrl = new URL("http://192.168.10.91:34444");
 		// 创建 WebDriver 实例
-		WebDriver driver = new ChromeDriver(options);
+		WebDriver driver = new RemoteWebDriver(remoteUrl,options);
 		try {
 			// 打开目标网页
 			driver.get("https://www.baidu.com");
