@@ -20,11 +20,12 @@ public class ChrelyonlyChromeApplication {
 		// 配置 ChromeOptions
 		ChromeOptions options = new ChromeOptions();
 //		options.setBinary("/app/chrome/chrome"); // 设置 Chrome 可执行文件路径
-//		options.addArguments("--headless"); // 无头模式
+		options.addArguments("--headless"); // 无头模式
 		options.addArguments("--window-size=1920,1080"); // 设置窗口大小
 
 		// 设置远程 WebDriver 连接地址
-		URL remoteUrl = new URL("http://192.168.10.91:34444");
+//		URL remoteUrl = new URL("http://192.168.10.91:34444");
+		URL remoteUrl = new URL("https://chrome-api.frp.chrelyonly.cn");
 		// 创建 WebDriver 实例
 		WebDriver driver = new RemoteWebDriver(remoteUrl,options);
 		try {
@@ -45,8 +46,8 @@ public class ChrelyonlyChromeApplication {
 		} catch (IOException e) {
 			System.out.println("Failed to save screenshot: " + e.getMessage());
 		} finally {
-			// 关闭浏览器
-//			driver.quit();
+			// 关闭浏览器,一定要执行
+			driver.quit();
 		}
 
 	}
