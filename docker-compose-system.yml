@@ -1,0 +1,37 @@
+services:
+  java-chrome-app-system:
+    build:
+      dockerfile: Dockerfile-system
+    container_name: java-chrome-app-system
+    shm_size: 2gb
+#    ports:
+#      - "18080:18080"
+#      - "60001:60001"
+#      - "1883:1883"
+    networks:
+      - my-network
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /www/dk_project/dk_app/java-chrome-app-system/app:/app
+    environment:
+#      - 最大会话时间
+      - SE_NODE_MAX_SESSIONS=20
+#      - 最大并发会话时间
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=10
+#      - 会话超时时间
+      - SE_NODE_SESSION_TIMEOUT=300
+#      - 理运行时间超过 2 小时的浏览器和超过 1 天的文件
+      - SE_ENABLE_BROWSER_LEFTOVERS_CLEANUP=true
+#      - 默认值3600（1小时），清理间隔（秒）。
+      - SE_BROWSER_LEFTOVERS_INTERVAL_SECS=3600
+#      - 默认值7200（2小时），运行时间超过该时间的浏览器将被终止。
+      - SE_BROWSER_LEFTOVERS_PROCESSES_SECS=7200
+#      - 默认值1（1天），基于Chrome的浏览器生成的文件/tmp将在此天数后
+      - SE_BROWSER_LEFTOVERS_TEMPFILES_DAYS=1
+#      - 默认值1（1天），基于Chrome的浏览器生成的文件/tmp将在此天数后
+      - TZ=Asia/Shanghai
+networks:
+  my-network:
+    name: wechat-api
+    enable_ipv6: true
+    driver: bridge
