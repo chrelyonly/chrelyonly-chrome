@@ -1,18 +1,12 @@
 services:
   java-chrome-app-system:
-    build:
-      dockerfile: Dockerfile-system
+#    build:
+#      dockerfile: Dockerfile-system
+    image: selenium/standalone-chrome
     container_name: java-chrome-app-system
     shm_size: 2gb
-#    ports:
-#      - "18080:18080"
-#      - "60001:60001"
-#      - "1883:1883"
-    networks:
-      - my-network
     volumes:
       - /etc/localtime:/etc/localtime
-      - /www/dk_project/dk_app/java-chrome-app-system/app:/app
     environment:
 #      - 最大会话时间
       - SE_NODE_MAX_SESSIONS=20
@@ -30,8 +24,19 @@ services:
       - SE_BROWSER_LEFTOVERS_TEMPFILES_DAYS=1
 #      - 默认值1（1天），基于Chrome的浏览器生成的文件/tmp将在此天数后
       - TZ=Asia/Shanghai
+    networks:
+      my-network:
+        ipv4_address: 172.20.0.24
+
 networks:
-  my-network:
-    name: wechat-api
-    enable_ipv6: true
-    driver: bridge
+  my-network:  # 定义自定义网络
+    name: my-network         # 可选：自定义网络名称
+    driver: bridge  # 使用默认的 bridge 网络驱动
+    ipam: # IP 地址管理配置（IP Address Management）
+      driver: default           # 使用默认 IPAM 驱动
+      config: # 子网配置（可多个）
+        - subnet: 172.20.0.0/16     # 子网网段 172.20.0.1 -- 172.20.255.254
+          gateway: 172.20.0.1       # 默认网关
+          aux_addresses: # 预留 IP 地址
+            host1: 172.20.0.2
+            host2: 172.20.0.3

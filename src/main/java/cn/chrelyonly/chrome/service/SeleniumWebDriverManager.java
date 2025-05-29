@@ -5,47 +5,85 @@ import jakarta.annotation.PreDestroy;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
-import org.springframework.stereotype.Component;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.concurrent.TimeUnit;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * @author 11725
+ * 持久化 WebDriver 实例的 Selenium 服务类
  */
 @Service
 public class SeleniumWebDriverManager {
     private final ChromeOptions options;
-    private final URL remoteUrl = new URL("http://172.18.0.5:4444");
-//    private final URL remoteUrl = new URL("http://172.16.3.167:34444");
+    private RemoteWebDriver driver;
+    private final URL remoteUrl;
 
     public SeleniumWebDriverManager() throws MalformedURLException {
-        options = new ChromeOptions();
+        this.remoteUrl = new URL("http://127.0.0.1:4444");
+        this.options = new ChromeOptions();
         options.addArguments("--headless", "--window-size=1920,1080");
         options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36");
-// 远程 WebDriver 服务器
-        System.out.println("WebDriver 初始化完成！");
+        // 禁用自动化标识
+        options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+        options.setExperimentalOption("useAutomationExtension", false);
+        // 屏蔽 navigator.webdriver
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("credentials_enable_service", false);
+        prefs.put("profile.password_manager_enabled", false);
+        options.setExperimentalOption("prefs", prefs);
+        // 添加 DevTools 层面的隐藏自动化标志脚本（配合 remote driver）
+        options.addArguments("--disable-blink-features=AutomationControlled");
     }
 
     /**
-     * 获取dnf金币比例快照
+     * 服务初始化时启动 WebDriver
      */
-    public String getDnfScreenshot() {
-        WebDriver driver = new RemoteWebDriver(remoteUrl, options);
-        driver.get("https://act.7881.com/pc/goldcoin/index.html?gameId=G10");
+    @PostConstruct
+    public void init() {
+        this.driver = new RemoteWebDriver(remoteUrl, options);
+        System.out.println("WebDriver 初始化完成！");
+// 执行 JS 代码隐藏 navigator.webdriver 标志位
+        driver.executeScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+    }
+
+    /**
+     * 服务销毁时关闭 WebDriver
+     */
+    @PreDestroy
+    public void destroy() {
+        if (driver != null) {
+            driver.quit();
+            System.out.println("WebDriver 已关闭！");
+        }
+    }
+    public byte[] getScreenshot(String url) {
         try {
-            // 等待页面加载
-            Thread.sleep(3000);
-            WebElement driverElement = driver.findElement(By.className("type01"));
-//            return "data:image/png;base64," + driverElement.getScreenshotAs(OutputType.BASE64);
-            return "data:image/png;base64," + driverElement.getScreenshotAs(OutputType.BASE64);
+            driver.get(url);
+            Thread.sleep(2000);
+            return driver.getScreenshotAs(OutputType.BYTES);
         } catch (Exception e) {
             e.printStackTrace();
-            return "截图失败：" + e.getMessage();
-        }finally {
-            driver.quit();
+            // 读取默认图片作为兜底
+            try {
+                // 替换为你实际图片的相对路径或绝对路径
+                Path path = Paths.get("/app/404.png");
+                return Files.readAllBytes(path);
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+                // 如果连默认图片都读不到，返回空字节数组
+                return new byte[0];
+            }
         }
     }
 }
