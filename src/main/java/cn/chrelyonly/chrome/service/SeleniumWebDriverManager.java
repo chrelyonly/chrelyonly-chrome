@@ -7,6 +7,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -29,8 +30,8 @@ public class SeleniumWebDriverManager {
     private RemoteWebDriver driver;
     private final URL remoteUrl;
 
-    public SeleniumWebDriverManager() throws MalformedURLException {
-        this.remoteUrl = new URL("http://127.0.0.1:4444");
+    public SeleniumWebDriverManager(@Value("${chrome.serverUrl}") String serverUrl) throws MalformedURLException {
+        this.remoteUrl = new URL(serverUrl);
         this.options = new ChromeOptions();
         options.addArguments("--headless", "--window-size=1920,1080");
         options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36");

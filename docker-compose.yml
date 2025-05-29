@@ -1,15 +1,12 @@
 services:
   java-chrome-app-api:
-    build:
-      dockerfile: Dockerfile
+#    build:
+#      dockerfile: Dockerfile
+    image: eclipse-temurin:17-jre-alpine
     container_name: java-chrome-app-api
-    shm_size: 2gb
-#    ports:
-#      - "18080:18080"
-#      - "60001:60001"
-#      - "1883:1883"
     networks:
-      - my-network
+      my-network:
+        ipv4_address: 172.20.0.25
     volumes:
       - /etc/localtime:/etc/localtime
       - /www/dk_project/dk_app/java-chrome-app-api/app:/app
@@ -18,8 +15,16 @@ services:
     working_dir: /app
     # 运行应用
     command: java -jar /app/app.jar
+
 networks:
-  my-network:
-    name: wechat-api
-    enable_ipv6: true
-    driver: bridge
+  my-network:  # 定义自定义网络
+    name: my-network         # 可选：自定义网络名称
+    driver: bridge  # 使用默认的 bridge 网络驱动
+    ipam: # IP 地址管理配置（IP Address Management）
+      driver: default           # 使用默认 IPAM 驱动
+      config: # 子网配置（可多个）
+        - subnet: 172.20.0.0/16     # 子网网段 172.20.0.1 -- 172.20.255.254
+          gateway: 172.20.0.1       # 默认网关
+          aux_addresses: # 预留 IP 地址
+            host1: 172.20.0.2
+            host2: 172.20.0.3
