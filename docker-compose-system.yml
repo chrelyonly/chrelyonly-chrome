@@ -24,6 +24,8 @@ services:
       - SE_BROWSER_LEFTOVERS_TEMPFILES_DAYS=1
 #      - 默认值1（1天），基于Chrome的浏览器生成的文件/tmp将在此天数后
       - TZ=Asia/Shanghai
+      # 子路径
+      - SE_SUB_PATH=/chrome-system-ui/
     networks:
       my-network:
         ipv4_address: 172.20.0.24
