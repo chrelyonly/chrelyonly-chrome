@@ -14,7 +14,8 @@ services:
       - TZ=Asia/Shanghai
     working_dir: /app
     # 运行应用
-    command: java -jar /app/app.jar
+#    command: java -jar /app/app.jar
+    command: ["java", "-jar", "/app/app.jar","--spring.profiles.active=prod"]
 
 networks:
   my-network:  # 定义自定义网络

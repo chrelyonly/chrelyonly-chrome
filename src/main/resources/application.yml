@@ -1,7 +1,7 @@
 spring:
   application:
     name: chrelyonly-chrome
+  profiles:
+    active: dev
 server:
   port: 8081
-chrome:
-  serverUrl: http://java-chrome-app-system:4444/chrome-system-ui

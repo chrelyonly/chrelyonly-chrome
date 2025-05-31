@@ -23,6 +23,7 @@ import java.util.Map;
 
 /**
  * 持久化 WebDriver 实例的 Selenium 服务类
+ * @author 11725
  */
 @Service
 public class SeleniumWebDriverManager {
@@ -31,7 +32,7 @@ public class SeleniumWebDriverManager {
     private final URL remoteUrl;
 
     public SeleniumWebDriverManager(@Value("${chrome.serverUrl}") String serverUrl) throws MalformedURLException {
-        this.remoteUrl = new URL("https://www.baidu.com/");
+        this.remoteUrl = new URL(serverUrl);
         this.options = new ChromeOptions();
         options.addArguments("--headless", "--window-size=1920,1080");
         options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36");
