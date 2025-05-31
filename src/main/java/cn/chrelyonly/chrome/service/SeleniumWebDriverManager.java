@@ -31,7 +31,7 @@ public class SeleniumWebDriverManager {
     private final URL remoteUrl;
 
     public SeleniumWebDriverManager(@Value("${chrome.serverUrl}") String serverUrl) throws MalformedURLException {
-        this.remoteUrl = new URL(serverUrl);
+        this.remoteUrl = new URL("https://www.baidu.com/");
         this.options = new ChromeOptions();
         options.addArguments("--headless", "--window-size=1920,1080");
         options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36");
@@ -46,7 +46,22 @@ public class SeleniumWebDriverManager {
         // 添加 DevTools 层面的隐藏自动化标志脚本（配合 remote driver）
         options.addArguments("--disable-blink-features=AutomationControlled");
     }
+    public boolean isDriverAlive() {
+        try {
+            driver.getCurrentUrl(); // 或 getTitle()
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
+    public void ensureDriverAvailable() {
+        if (!isDriverAlive()) {
+            System.out.println("WebDriver 已失效，尝试重新初始化...");
+            destroy();
+            init();
+        }
+    }
     /**
      * 服务初始化时启动 WebDriver
      */
@@ -69,6 +84,8 @@ public class SeleniumWebDriverManager {
         }
     }
     public byte[] getScreenshot(String url) {
+//        每次调用前先确保 WebDriver 已启动
+        ensureDriverAvailable();
         try {
             driver.get(url);
             Thread.sleep(2000);
