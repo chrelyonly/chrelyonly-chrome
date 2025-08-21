@@ -36,7 +36,7 @@ public class SeleniumWebDriverManager {
         this.remoteUrl = new URL(serverUrl);
         this.options = new ChromeOptions();
 //        options.addArguments("--headless", "--window-size=1920,1080");
-        options.addArguments("--headless=new");
+        options.addArguments("--headless=new", "--window-size=1920,1080");
         // options.addArguments("user-agent=Mozilla/5.0 ...");
         // 禁用自动化标识
         options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
