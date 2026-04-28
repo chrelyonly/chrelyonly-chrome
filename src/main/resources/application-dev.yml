@@ -1,2 +1,2 @@
 chrome:
-  serverUrl: https://nginx-3.frp.chrelyonly.cn/chrome-system-ui
+  serverUrl: http://192.168.10.47:4444/chrome-system-ui

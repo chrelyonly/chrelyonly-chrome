@@ -1,21 +1,22 @@
 services:
   java-chrome-app-api:
+    mem_limit: 1g
 #    build:
 #      dockerfile: Dockerfile
     image: eclipse-temurin:17-jre-alpine
     container_name: java-chrome-app-api
     networks:
-      my-network:
-        ipv4_address: 172.20.0.25
+      - my-network
     volumes:
-      - /etc/localtime:/etc/localtime
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:roro
       - /www/dk_project/dk_app/java-chrome-app-api/app:/app
     environment:
       - TZ=Asia/Shanghai
     working_dir: /app
     # 运行应用
 #    command: java -jar /app/app.jar
-    command: ["java", "-jar", "/app/app.jar","--spring.profiles.active=prod"]
+    command: ["java", "-jar", "/app/chrelyonly-chrome.jar","--spring.profiles.active=prod"]
 
 networks:
   my-network:  # 定义自定义网络

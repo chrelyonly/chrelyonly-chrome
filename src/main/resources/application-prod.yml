@@ -1,2 +1,2 @@
 chrome:
-  serverUrl: http://java-chrome-app-system:4444/chrome-system-ui
+  serverUrl: http://192.168.10.47:4444/chrome-system-ui
