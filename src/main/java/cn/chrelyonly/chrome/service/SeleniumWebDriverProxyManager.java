@@ -37,7 +37,14 @@ public class SeleniumWebDriverProxyManager {
         this.remoteUrl = new URL(serverUrl);
         this.options = new ChromeOptions();
 //        options.addArguments("--headless", "--window-size=1920,1080");
-        options.addArguments("--headless=new", "--window-size=1920,1080");
+        options.addArguments(
+                "--headless=new",
+                "--window-size=1920,1080",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-ipv6"
+        );
         options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36");
         // 禁用自动化标识
         options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
