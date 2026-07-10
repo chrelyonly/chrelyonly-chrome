@@ -159,4 +159,34 @@ public class SeleniumWebDriverManager {
             }
         }
     }
+
+//    使用html进行内容渲染
+
+    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName) {
+        ensureDriverAvailable();
+        try {
+            log.info("开始渲染内容");
+            driver.get("about:blank");
+            driver.executeScript("""
+            document.open();
+            document.write(arguments[0]);
+            document.close();
+        """, html);
+            // 等待页面渲染
+            Thread.sleep(2000);
+            byte[] screenshot;
+            if (htmlScreenshotClassName == null) {
+                screenshot = driver.getScreenshotAs(OutputType.BYTES);
+            }else{
+                WebElement root = driver.findElement(By.className(htmlScreenshotClassName));
+                screenshot = root.getScreenshotAs(OutputType.BYTES);
+            }
+            log.info("截图成功，大小 = {} 字节", screenshot.length);
+            return screenshot;
+        } catch (Exception e) {
+            log.error("截图失败", e);
+            return new byte[0];
+        }
+
+    }
 }

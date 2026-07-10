@@ -41,4 +41,23 @@ public class ChromeController {
             e.printStackTrace();
         }
     }
+    @PostMapping("/getHtmlScreenshot")
+    public void getHtmlScreenshot(HttpServletResponse response,@RequestBody Map<String,String> body) throws FileNotFoundException {
+        String html = body.get("html");
+        String htmlScreenshotClassName = body.get("htmlScreenshotClassName");
+        if (html == null) {
+            return;
+        }
+        byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName);
+        response.setContentType("image/png");
+        response.setContentLengthLong(imageBytes.length);
+
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(imageBytes);
+            os.flush();
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
+        }
+    }
 }
