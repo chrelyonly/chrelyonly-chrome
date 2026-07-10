@@ -159,7 +159,7 @@ public class SeleniumWebDriverManager {
 
             driver.get(url);
             // 等待页面渲染
-            Thread.sleep(2000);
+            Thread.sleep(1000);
 //            byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
             byte[] screenshot;
             if (htmlScreenshotClassName == null) {
