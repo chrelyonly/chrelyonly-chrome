@@ -32,7 +32,7 @@ public class SeleniumWebDriverProxyManager {
     private RemoteWebDriver driver;
     private final URL remoteUrl;
 
-    public SeleniumWebDriverProxyManager(@Value("${chrome.serverUrl}") String serverUrl) throws MalformedURLException {
+    public SeleniumWebDriverProxyManager(@Value("${chrome.serverProxyUrl}") String serverUrl) throws MalformedURLException {
         log.info("初始化 SeleniumWebDriverManager，远程 URL = {}", serverUrl);
         this.remoteUrl = new URL(serverUrl);
         this.options = new ChromeOptions();
@@ -48,10 +48,6 @@ public class SeleniumWebDriverProxyManager {
         prefs.put("profile.password_manager_enabled", false);
         options.setExperimentalOption("prefs", prefs);
         options.addArguments("--disable-blink-features=AutomationControlled");
-        Proxy proxy = new Proxy();
-        proxy.setHttpProxy("192.168.10.47:10001");
-
-        options.setProxy(proxy);
         log.info("ChromeOptions 配置完成");
     }
 
@@ -145,7 +141,6 @@ public class SeleniumWebDriverProxyManager {
     public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer timeOutNumber) {
         ensureDriverAvailable();
         try {
-            // 页面加载最大30秒
             driver.manage()
                     .timeouts()
                     .pageLoadTimeout(Duration.ofSeconds(timeOutNumber));
