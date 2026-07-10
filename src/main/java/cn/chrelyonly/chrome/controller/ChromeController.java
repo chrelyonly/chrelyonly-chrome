@@ -1,6 +1,7 @@
 package cn.chrelyonly.chrome.controller;
 
 import cn.chrelyonly.chrome.service.SeleniumWebDriverManager;
+import cn.chrelyonly.chrome.service.SeleniumWebDriverProxyManager;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class ChromeController {
 
     private final SeleniumWebDriverManager seleniumWebDriverManager;
+    private final SeleniumWebDriverProxyManager seleniumWebDriverProxyManager;
 
     @RequestMapping("/curlUrl")
     public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) throws FileNotFoundException {
@@ -55,8 +57,8 @@ public class ChromeController {
         }
         byte[] imageBytes;
         if (proxy != null && proxy == true){
-//            imageBytes = seleniumWebDriverManager.getScreenshotWithProxy(url,htmlScreenshotClassName,timeoutNumber);
-            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
+            imageBytes = seleniumWebDriverProxyManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
+//            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
         }else{
             imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
         }
