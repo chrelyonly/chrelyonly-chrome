@@ -16,6 +16,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -138,12 +139,35 @@ public class SeleniumWebDriverManager {
         }
     }
 
-    public byte[] getScreenshot(String url) {
+    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer timeOutNumber) {
         ensureDriverAvailable();
         try {
+            // 页面加载最大30秒
+            driver.manage()
+                    .timeouts()
+                    .pageLoadTimeout(Duration.ofSeconds(timeOutNumber));
+            // 元素查找超时
+            driver.manage()
+                    .timeouts()
+                    .implicitlyWait(Duration.ofSeconds(timeOutNumber));
+            // JS执行超时
+            driver.manage()
+                    .timeouts()
+                    .scriptTimeout(Duration.ofSeconds(timeOutNumber));
             log.info("开始访问页面：{}", url);
+
+
             driver.get(url);
-            byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
+            // 等待页面渲染
+            Thread.sleep(2000);
+//            byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
+            byte[] screenshot;
+            if (htmlScreenshotClassName == null) {
+                screenshot = driver.getScreenshotAs(OutputType.BYTES);
+            }else{
+                WebElement root = driver.findElement(By.className(htmlScreenshotClassName));
+                screenshot = root.getScreenshotAs(OutputType.BYTES);
+            }
             log.info("截图成功，大小 = {} 字节", screenshot.length);
             return screenshot;
         } catch (Exception e) {
@@ -165,6 +189,7 @@ public class SeleniumWebDriverManager {
     public byte[] htmlScreenshot(String html, String htmlScreenshotClassName) {
         ensureDriverAvailable();
         try {
+
             log.info("开始渲染内容");
             driver.get("about:blank");
             driver.executeScript("""
@@ -174,6 +199,13 @@ public class SeleniumWebDriverManager {
         """, html);
             // 等待页面渲染
             Thread.sleep(2000);
+
+            // 1. 获取网页或元素的总高度和宽度
+            Long width = (Long) driver.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);");
+            Long height = (Long) driver.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);");
+
+// 2. 动态将浏览器窗口放大到和网页内容一样大
+            driver.manage().window().setSize(new Dimension(width.intValue(), height.intValue()));
             byte[] screenshot;
             if (htmlScreenshotClassName == null) {
                 screenshot = driver.getScreenshotAs(OutputType.BYTES);
@@ -186,7 +218,71 @@ public class SeleniumWebDriverManager {
         } catch (Exception e) {
             log.error("截图失败", e);
             return new byte[0];
+        } finally {
+            // ⭐恢复浏览器尺寸
+            driver.manage().window().setSize(new Dimension(1920, 1080));
+            log.info("恢复浏览器尺寸");
         }
 
+    }
+
+
+    public byte[] getScreenshotWithProxy(String url,String htmlScreenshotClassName, Integer timeOutNumber) {
+        ChromeOptions proxyOptions = new ChromeOptions();
+
+//        options.addArguments("--headless", "--window-size=1920,1080");
+        proxyOptions.addArguments("--headless=new", "--window-size=1920,1080");
+        proxyOptions.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36");
+        // 禁用自动化标识
+        proxyOptions.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+        proxyOptions.setExperimentalOption("useAutomationExtension", false);
+        // 屏蔽 navigator.webdriver
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("credentials_enable_service", false);
+        prefs.put("profile.password_manager_enabled", false);
+        proxyOptions.setExperimentalOption("prefs", prefs);
+        proxyOptions.addArguments("--disable-blink-features=AutomationControlled");
+        // 临时代理
+        proxyOptions.addArguments(
+                "--proxy-server=http://192.168.10.47:10001"
+        );
+
+        RemoteWebDriver proxyDriver = null;
+
+        try {
+            proxyDriver = new RemoteWebDriver(remoteUrl, proxyOptions);
+            // 页面加载最大30秒
+            driver.manage()
+                    .timeouts()
+                    .pageLoadTimeout(Duration.ofSeconds(timeOutNumber));
+            // 元素查找超时
+            driver.manage()
+                    .timeouts()
+                    .implicitlyWait(Duration.ofSeconds(timeOutNumber));
+            // JS执行超时
+            driver.manage()
+                    .timeouts()
+                    .scriptTimeout(Duration.ofSeconds(timeOutNumber));
+
+            driver.get(url);
+            Thread.sleep(2000);
+
+            byte[] screenshot;
+            if (htmlScreenshotClassName == null) {
+                screenshot = driver.getScreenshotAs(OutputType.BYTES);
+            }else{
+                WebElement root = driver.findElement(By.className(htmlScreenshotClassName));
+                screenshot = root.getScreenshotAs(OutputType.BYTES);
+            }
+            return screenshot;
+
+        } catch (Exception e) {
+            log.error("截图失败", e);
+            return new byte[0];
+        } finally {
+            if (proxyDriver != null) {
+                proxyDriver.quit();
+            }
+        }
     }
 }

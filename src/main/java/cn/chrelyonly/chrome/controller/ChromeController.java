@@ -21,7 +21,7 @@ public class ChromeController {
     private final SeleniumWebDriverManager seleniumWebDriverManager;
 
     @RequestMapping("/curlUrl")
-    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url, @RequestBody(required = false) Map<String,Object> body) throws FileNotFoundException {
+    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) throws FileNotFoundException {
         // 优先使用请求参数中的 url，如果没有则尝试从请求体中获取
         if ((url == null || url.isEmpty()) && body != null) {
             Object urlObj = body.get("url");
@@ -29,7 +29,37 @@ public class ChromeController {
                 url = (String) urlObj;
             }
         }
-        byte[] imageBytes = seleniumWebDriverManager.getScreenshot(url);
+        if ((htmlScreenshotClassName == null || htmlScreenshotClassName.isEmpty()) && body != null) {
+            Object htmlScreenshotClassNameObj = body.get("htmlScreenshotClassName");
+            if (htmlScreenshotClassNameObj instanceof String) {
+                htmlScreenshotClassName = (String) htmlScreenshotClassNameObj;
+            }
+        }
+//        是否使用代理
+        try {
+            if (body != null){
+                Object proxyObj = body.get("proxy");
+                if (proxy == null && proxyObj != null && proxyObj instanceof Boolean) {
+                    proxy = (Boolean) proxyObj;
+                }
+                Object timeOutNumberObj = body.get("timeOutNumber");
+                if (timeoutNumber == null && timeOutNumberObj != null && timeOutNumberObj instanceof Integer) {
+                    timeoutNumber = (Integer) timeOutNumberObj;
+                }
+            }
+        } catch (Exception e) {
+            proxy = false;
+        }
+        if (timeoutNumber == null){
+            timeoutNumber = 30;
+        }
+        byte[] imageBytes;
+        if (proxy != null && proxy == true){
+//            imageBytes = seleniumWebDriverManager.getScreenshotWithProxy(url,htmlScreenshotClassName,timeoutNumber);
+            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
+        }else{
+            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
+        }
         response.setContentType("image/png");
         response.setContentLengthLong(imageBytes.length);
 
