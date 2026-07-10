@@ -48,7 +48,10 @@ public class SeleniumWebDriverProxyManager {
         prefs.put("profile.password_manager_enabled", false);
         options.setExperimentalOption("prefs", prefs);
         options.addArguments("--disable-blink-features=AutomationControlled");
+        Proxy proxy = new Proxy();
+        proxy.setHttpProxy("192.168.10.47:10001");
 
+        options.setProxy(proxy);
         log.info("ChromeOptions 配置完成");
     }
 
