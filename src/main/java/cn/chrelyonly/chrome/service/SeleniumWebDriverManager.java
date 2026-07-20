@@ -166,7 +166,13 @@ public class SeleniumWebDriverManager {
 
             driver.get(url);
             // 等待页面渲染
-            Thread.sleep(1000);
+            Thread.sleep(2000);
+            // 1. 获取网页或元素的总高度和宽度
+            Long width = (Long) driver.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);");
+            Long height = (Long) driver.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);");
+
+// 2. 动态将浏览器窗口放大到和网页内容一样大
+            driver.manage().window().setSize(new Dimension(width.intValue(), height.intValue()));
 //            byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
             byte[] screenshot;
             if (htmlScreenshotClassName == null) {
@@ -188,6 +194,10 @@ public class SeleniumWebDriverManager {
                 log.error("兜底图片读取失败：{}", ioException.getMessage(), ioException);
                 return new byte[0];
             }
+        } finally {
+            // ⭐恢复浏览器尺寸
+            driver.manage().window().setSize(new Dimension(1920, 1080));
+            log.info("恢复浏览器尺寸");
         }
     }
 
