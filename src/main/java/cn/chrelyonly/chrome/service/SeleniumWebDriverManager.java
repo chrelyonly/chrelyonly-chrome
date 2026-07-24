@@ -258,12 +258,6 @@ public class SeleniumWebDriverManager {
      * 截图的核心处理逻辑
      */
     private byte[] captureAndResetSize(String className, int timeoutSeconds) {
-        // 1. 如果指定了特定 Element 节点，截取局部元素
-        if (className != null && !className.isBlank()) {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
-            WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(className)));
-            return element.getScreenshotAs(OutputType.BYTES);
-        }
 
         // 2. 全屏截图逻辑优化
         JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -272,6 +266,14 @@ public class SeleniumWebDriverManager {
 
         driver.manage().window().setSize(new Dimension(width.intValue(), height.intValue()));
 
+        // 1. 如果指定了特定 Element 节点，截取局部元素
+        if (className != null && !className.isBlank()) {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+            WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(className)));
+            byte[] screenshot = element.getScreenshotAs(OutputType.BYTES);
+            log.info("截图生成成功，文件大小 = {} 字节 (分辨率: {}x{})", screenshot.length, width, height);
+            return screenshot;
+        }
         byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
         log.info("截图生成成功，文件大小 = {} 字节 (分辨率: {}x{})", screenshot.length, width, height);
         return screenshot;
