@@ -267,8 +267,8 @@ public class SeleniumWebDriverManager {
 
         // 2. 全屏截图逻辑优化
         JavascriptExecutor js = (JavascriptExecutor) driver;
-        Long width = (Long) js.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, 1920);");
-        Long height = (Long) js.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1080);");
+        Long width = (Long) driver.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);");
+        Long height = (Long) driver.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);");
 
         driver.manage().window().setSize(new Dimension(width.intValue(), height.intValue()));
 
