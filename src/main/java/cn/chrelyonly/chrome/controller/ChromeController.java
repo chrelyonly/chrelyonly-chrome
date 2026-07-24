@@ -1,7 +1,6 @@
 package cn.chrelyonly.chrome.controller;
 
 import cn.chrelyonly.chrome.service.SeleniumWebDriverManager;
-import cn.chrelyonly.chrome.service.SeleniumWebDriverProxyManager;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +19,10 @@ import java.util.Map;
 public class ChromeController {
 
     private final SeleniumWebDriverManager seleniumWebDriverManager;
-    private final SeleniumWebDriverProxyManager seleniumWebDriverProxyManager;
+//    private final SeleniumWebDriverProxyManager seleniumWebDriverProxyManager;
 
     @RequestMapping("/curlUrl")
-    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) throws FileNotFoundException {
+    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) {
         // 优先使用请求参数中的 url，如果没有则尝试从请求体中获取
         if ((url == null || url.isEmpty()) && body != null) {
             Object urlObj = body.get("url");
@@ -41,11 +40,11 @@ public class ChromeController {
         try {
             if (body != null){
                 Object proxyObj = body.get("proxy");
-                if (proxy == null && proxyObj != null && proxyObj instanceof Boolean) {
+                if (proxy == null && proxyObj instanceof Boolean) {
                     proxy = (Boolean) proxyObj;
                 }
                 Object timeOutNumberObj = body.get("timeOutNumber");
-                if (timeoutNumber == null && timeOutNumberObj != null && timeOutNumberObj instanceof Integer) {
+                if (timeoutNumber == null && timeOutNumberObj instanceof Integer) {
                     timeoutNumber = (Integer) timeOutNumberObj;
                 }
             }
@@ -56,12 +55,18 @@ public class ChromeController {
             timeoutNumber = 30;
         }
         byte[] imageBytes;
-        if (proxy != null && proxy == true){
-            imageBytes = seleniumWebDriverProxyManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
-//            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
-        }else{
+//        if (proxy != null && proxy){
+//            imageBytes = seleniumWebDriverProxyManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
+//        }else{
             imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
-        }
+//        }
+        responseContent(response, imageBytes);
+    }
+
+    /**
+     * 响应内容
+     */
+    private void responseContent(HttpServletResponse response, byte[] imageBytes) {
         response.setContentType("image/png");
         response.setContentLengthLong(imageBytes.length);
 
@@ -70,26 +75,18 @@ public class ChromeController {
             os.flush();
         } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
+
     @PostMapping("/getHtmlScreenshot")
-    public void getHtmlScreenshot(HttpServletResponse response,@RequestBody Map<String,String> body) throws FileNotFoundException {
+    public void getHtmlScreenshot(HttpServletResponse response,@RequestBody Map<String,String> body) {
         String html = body.get("html");
         String htmlScreenshotClassName = body.get("htmlScreenshotClassName");
         if (html == null) {
             return;
         }
         byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName);
-        response.setContentType("image/png");
-        response.setContentLengthLong(imageBytes.length);
-
-        try (OutputStream os = response.getOutputStream()) {
-            os.write(imageBytes);
-            os.flush();
-        } catch (IOException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            e.printStackTrace();
-        }
+        responseContent(response, imageBytes);
     }
 }
