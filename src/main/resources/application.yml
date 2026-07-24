@@ -1,7 +1,0 @@
-spring:
-  application:
-    name: chrelyonly-chrome
-  profiles:
-    active: dev
-server:
-  port: 8081

@@ -1,3 +1,0 @@
-chrome:
-  serverUrl: http://192.168.10.47:4444/chrome-system-ui
-  serverProxyUrl: http://192.168.10.47:4445/chrome-system-ui
