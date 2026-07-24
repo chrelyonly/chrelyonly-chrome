@@ -197,7 +197,7 @@ public class SeleniumWebDriverManager {
     /**
      * URL 页面截图
      */
-    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer timeoutSeconds) {
+    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer timeoutSeconds, Integer sleep) {
         lock.lock();
         try {
             ensureDriverAvailable();
@@ -208,7 +208,9 @@ public class SeleniumWebDriverManager {
 
             log.info("开始访问页面：{}", url);
             driver.get(url);
-
+            if (sleep != null) {
+                Thread.sleep(sleep * 1000L);
+            }
             // 等待 DOM 加载完成
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
             wait.until(d -> ((JavascriptExecutor) d).executeScript("return document.readyState").equals("complete"));

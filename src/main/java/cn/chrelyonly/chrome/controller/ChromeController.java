@@ -22,7 +22,7 @@ public class ChromeController {
 //    private final SeleniumWebDriverProxyManager seleniumWebDriverProxyManager;
 
     @RequestMapping("/curlUrl")
-    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) {
+    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) Integer sleep,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) {
         // 优先使用请求参数中的 url，如果没有则尝试从请求体中获取
         if ((url == null || url.isEmpty()) && body != null) {
             Object urlObj = body.get("url");
@@ -58,7 +58,7 @@ public class ChromeController {
 //        if (proxy != null && proxy){
 //            imageBytes = seleniumWebDriverProxyManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
 //        }else{
-            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
+            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber,sleep);
 //        }
         responseContent(response, imageBytes);
     }
