@@ -228,7 +228,7 @@ public class SeleniumWebDriverManager {
     /**
      * HTML 字符串直接渲染并截图
      */
-    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName) {
+    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName, Integer sleep) {
         lock.lock();
         try {
             ensureDriverAvailable();
@@ -244,6 +244,9 @@ public class SeleniumWebDriverManager {
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             wait.until(d -> ((JavascriptExecutor) d).executeScript("return document.readyState").equals("complete"));
 
+            if (sleep != null) {
+                Thread.sleep(sleep * 1000L);
+            }
             return captureAndResetSize(htmlScreenshotClassName, 10);
         } catch (Exception e) {
             log.error("HTML 渲染截图失败：{}", e.getMessage(), e);

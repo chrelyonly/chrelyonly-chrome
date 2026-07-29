@@ -1,6 +1,7 @@
 package cn.chrelyonly.chrome.controller;
 
 import cn.chrelyonly.chrome.service.SeleniumWebDriverManager;
+import com.alibaba.fastjson2.JSONObject;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,13 +81,14 @@ public class ChromeController {
     }
 
     @PostMapping("/getHtmlScreenshot")
-    public void getHtmlScreenshot(HttpServletResponse response,@RequestBody Map<String,String> body) {
-        String html = body.get("html");
-        String htmlScreenshotClassName = body.get("htmlScreenshotClassName");
+    public void getHtmlScreenshot(HttpServletResponse response,@RequestBody JSONObject body) {
+        String html = body.getString("html");
+        Integer sleep = body.getInteger("sleep");
+        String htmlScreenshotClassName = body.getString("htmlScreenshotClassName");
         if (html == null) {
             return;
         }
-        byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName);
+        byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName,sleep);
         responseContent(response, imageBytes);
     }
 }
