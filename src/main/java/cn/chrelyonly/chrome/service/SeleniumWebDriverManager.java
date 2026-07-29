@@ -231,9 +231,8 @@ public class SeleniumWebDriverManager {
     public byte[] htmlScreenshot(String html, String htmlScreenshotClassName, Integer sleep) {
         lock.lock();
         try {
-            ensureDriverAvailable();
             log.info("渲染自定义 HTML 内容...");
-
+            ensureDriverAvailable();
             driver.get("about:blank");
             ((JavascriptExecutor) driver).executeScript("""
                 document.open();
