@@ -212,6 +212,12 @@ public class SeleniumWebDriverManager {
             ensureDriverAvailable();
             log.info("开始访问页面：{}", url);
             driver.get(url);
+
+            if (sleep != null) {
+                Thread.sleep(sleep * 1000L);
+            }else{
+                sleep = 10;
+            }
             return captureAndResetSize(htmlScreenshotClassName,sleep,htmlScreenshotClassId);
         } catch (Exception e) {
             log.error("页面截图异常 [{}]: {}", url, e.getMessage(), e);
@@ -236,6 +242,11 @@ public class SeleniumWebDriverManager {
                 document.write(arguments[0]);
                 document.close();
             """, html);
+            if (sleep != null) {
+                Thread.sleep(sleep * 1000L);
+            }else{
+                sleep = 10;
+            }
             return captureAndResetSize(htmlScreenshotClassName, sleep,htmlScreenshotClassId);
         } catch (Exception e) {
             log.error("HTML 渲染截图失败：{}", e.getMessage(), e);
