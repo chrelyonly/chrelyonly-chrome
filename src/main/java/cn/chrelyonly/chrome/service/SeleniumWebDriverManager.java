@@ -114,7 +114,7 @@ public class SeleniumWebDriverManager {
                 return;
             }
             // 使用 轻量级 JS 脚本做心跳，避免刷新页面破坏状态
-            ((JavascriptExecutor) driver).executeScript("return 1;");
+            driver.executeScript("return 1;");
             log.debug("💓 WebDriver 心跳正常");
         } catch (Exception e) {
             log.error("💀 心跳检测失败，触发强制重启：{}", e.getMessage());
@@ -197,25 +197,13 @@ public class SeleniumWebDriverManager {
     /**
      * URL 页面截图
      */
-    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer timeoutSeconds, Integer sleep) {
+    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer sleep,String htmlScreenshotClassId) {
         lock.lock();
         try {
             ensureDriverAvailable();
-            int timeout = (timeoutSeconds == null || timeoutSeconds <= 0) ? 30 : timeoutSeconds;
-
-            driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(timeout));
-            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(timeout));
-
             log.info("开始访问页面：{}", url);
             driver.get(url);
-            if (sleep != null) {
-                Thread.sleep(sleep * 1000L);
-            }
-            // 等待 DOM 加载完成
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
-            wait.until(d -> ((JavascriptExecutor) d).executeScript("return document.readyState").equals("complete"));
-
-            return captureAndResetSize(htmlScreenshotClassName, timeout);
+            return captureAndResetSize(htmlScreenshotClassName,sleep,htmlScreenshotClassId);
         } catch (Exception e) {
             log.error("页面截图异常 [{}]: {}", url, e.getMessage(), e);
             return loadFallbackImage();
@@ -228,25 +216,18 @@ public class SeleniumWebDriverManager {
     /**
      * HTML 字符串直接渲染并截图
      */
-    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName, Integer sleep) {
+    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName, Integer sleep,String htmlScreenshotClassId) {
         lock.lock();
         try {
             log.info("渲染自定义 HTML 内容...");
             ensureDriverAvailable();
             driver.get("about:blank");
-            ((JavascriptExecutor) driver).executeScript("""
+            driver.executeScript("""
                 document.open();
                 document.write(arguments[0]);
                 document.close();
             """, html);
-
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            wait.until(d -> ((JavascriptExecutor) d).executeScript("return document.readyState").equals("complete"));
-
-            if (sleep != null) {
-                Thread.sleep(sleep * 1000L);
-            }
-            return captureAndResetSize(htmlScreenshotClassName, 10);
+            return captureAndResetSize(htmlScreenshotClassName, sleep,htmlScreenshotClassId);
         } catch (Exception e) {
             log.error("HTML 渲染截图失败：{}", e.getMessage(), e);
             return new byte[0];
@@ -257,27 +238,39 @@ public class SeleniumWebDriverManager {
     }
 
     /**
-     * 截图的核心处理逻辑
+     * 截图的核心处理逻辑（优先 ID，次选 ClassName，最后全屏）
      */
-    private byte[] captureAndResetSize(String className, int timeoutSeconds) {
+    private byte[] captureAndResetSize(String className, int timeoutSeconds, String htmlScreenshotClassId) {
 
-        // 2. 全屏截图逻辑优化
-        JavascriptExecutor js = (JavascriptExecutor) driver;
+        // 1. 设置全屏分辨率
         Long width = (Long) driver.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);");
         Long height = (Long) driver.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);");
 
         driver.manage().window().setSize(new Dimension(width.intValue(), height.intValue()));
 
-        // 1. 如果指定了特定 Element 节点，截取局部元素
-        if (className != null && !className.isBlank()) {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
-            WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(className)));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+
+        // 2. 优先处理指定 ID 的局部截图
+        if (htmlScreenshotClassId != null && !htmlScreenshotClassId.isBlank()) {
+            WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id(htmlScreenshotClassId)));
             byte[] screenshot = element.getScreenshotAs(OutputType.BYTES);
-            log.info("截图生成成功，文件大小 = {} 字节 (分辨率: {}x{})", screenshot.length, width, height);
+            log.info("【ID截图成功】Element ID = {}, 文件大小 = {} 字节 (画布分辨率: {}x{})",
+                    htmlScreenshotClassId, screenshot.length, width, height);
             return screenshot;
         }
+
+        // 3. 次优先处理指定 ClassName 的局部截图
+        if (className != null && !className.isBlank()) {
+            WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(className)));
+            byte[] screenshot = element.getScreenshotAs(OutputType.BYTES);
+            log.info("【Class截图成功】ClassName = {}, 文件大小 = {} 字节 (画布分辨率: {}x{})",
+                    className, screenshot.length, width, height);
+            return screenshot;
+        }
+
+        // 4. 默认全屏截图
         byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
-        log.info("截图生成成功，文件大小 = {} 字节 (分辨率: {}x{})", screenshot.length, width, height);
+        log.info("【全屏截图成功】文件大小 = {} 字节 (分辨率: {}x{})", screenshot.length, width, height);
         return screenshot;
     }
 

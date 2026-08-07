@@ -23,7 +23,7 @@ public class ChromeController {
 //    private final SeleniumWebDriverProxyManager seleniumWebDriverProxyManager;
 
     @RequestMapping("/curlUrl")
-    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) Integer sleep,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) Boolean proxy,@RequestParam(required = false) Integer timeoutNumber, @RequestBody(required = false) Map<String,Object> body) {
+    public void getDnfScreenshot(HttpServletResponse response,@RequestParam(required = false) String url,@RequestParam(required = false) Integer sleep,@RequestParam(required = false) String htmlScreenshotClassName,@RequestParam(required = false) String htmlScreenshotClassId, @RequestBody(required = false) Map<String,Object> body) {
         // 优先使用请求参数中的 url，如果没有则尝试从请求体中获取
         if ((url == null || url.isEmpty()) && body != null) {
             Object urlObj = body.get("url");
@@ -37,30 +37,14 @@ public class ChromeController {
                 htmlScreenshotClassName = (String) htmlScreenshotClassNameObj;
             }
         }
-//        是否使用代理
-        try {
-            if (body != null){
-                Object proxyObj = body.get("proxy");
-                if (proxy == null && proxyObj instanceof Boolean) {
-                    proxy = (Boolean) proxyObj;
-                }
-                Object timeOutNumberObj = body.get("timeOutNumber");
-                if (timeoutNumber == null && timeOutNumberObj instanceof Integer) {
-                    timeoutNumber = (Integer) timeOutNumberObj;
-                }
+        if ((htmlScreenshotClassId == null || htmlScreenshotClassId.isEmpty()) && body != null) {
+            Object htmlScreenshotClassNameObj = body.get("htmlScreenshotClassId");
+            if (htmlScreenshotClassNameObj instanceof String) {
+                htmlScreenshotClassId = (String) htmlScreenshotClassNameObj;
             }
-        } catch (Exception e) {
-            proxy = false;
-        }
-        if (timeoutNumber == null){
-            timeoutNumber = 30;
         }
         byte[] imageBytes;
-//        if (proxy != null && proxy){
-//            imageBytes = seleniumWebDriverProxyManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber);
-//        }else{
-            imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,timeoutNumber,sleep);
-//        }
+        imageBytes = seleniumWebDriverManager.getScreenshot(url,htmlScreenshotClassName,sleep,htmlScreenshotClassId);
         responseContent(response, imageBytes);
     }
 
@@ -85,10 +69,11 @@ public class ChromeController {
         String html = body.getString("html");
         Integer sleep = body.getInteger("sleep");
         String htmlScreenshotClassName = body.getString("htmlScreenshotClassName");
+        String htmlScreenshotClassId = body.getString("htmlScreenshotClassId");
         if (html == null) {
             return;
         }
-        byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName,sleep);
+        byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName,sleep,htmlScreenshotClassId);
         responseContent(response, imageBytes);
     }
 }
