@@ -3,6 +3,8 @@ package cn.chrelyonly.chrome.service;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+
+import org.jspecify.annotations.NonNull;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.chromium.HasCdp;
@@ -47,6 +49,24 @@ public class SeleniumWebDriverManager {
     }
 
     private ChromeOptions createChromeOptions() {
+        ChromeOptions chromeOptions = createOptions();
+
+        // 屏蔽痕迹配置
+        chromeOptions.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+        chromeOptions.setExperimentalOption("useAutomationExtension", false);
+
+        // 禁用无用功能以提升速度
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("credentials_enable_service", false);
+        prefs.put("profile.password_manager_enabled", false);
+        // 屏蔽弹窗与剪贴板权限提示
+        prefs.put("profile.default_content_setting_values.notifications", 2);
+        chromeOptions.setExperimentalOption("prefs", prefs);
+
+        return chromeOptions;
+    }
+
+    private static @NonNull ChromeOptions createOptions() {
         ChromeOptions chromeOptions = new ChromeOptions();
 
         // 基础性能与稳定性参数优化
@@ -62,19 +82,6 @@ public class SeleniumWebDriverManager {
                 "--disable-blink-features=AutomationControlled" // 隐藏自动化标志
         );
         chromeOptions.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36");
-
-        // 屏蔽痕迹配置
-        chromeOptions.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
-        chromeOptions.setExperimentalOption("useAutomationExtension", false);
-
-        // 禁用无用功能以提升速度
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        // 屏蔽弹窗与剪贴板权限提示
-        prefs.put("profile.default_content_setting_values.notifications", 2);
-        chromeOptions.setExperimentalOption("prefs", prefs);
-
         return chromeOptions;
     }
 
@@ -108,7 +115,7 @@ public class SeleniumWebDriverManager {
     public void heartbeat() {
         lock.lock();
         try {
-            if (!isDriverAlive()) {
+            if (isDriverAlive()) {
                 log.warn("💀 心跳检测：WebDriver 已失效，正在重建...");
                 reinitializeUnsafe();
                 return;
@@ -126,18 +133,20 @@ public class SeleniumWebDriverManager {
 
     public boolean isDriverAlive() {
         if (driver == null) {
-            return false;
+            return true;
         }
         try {
             // 通过获取 Session ID 和轻量指令确认存活
-            return driver.getSessionId() != null && driver.getWindowHandle() != null;
-        } catch (Exception e) {
+            if (driver.getSessionId() == null) return true;
+            driver.getWindowHandle();
             return false;
+        } catch (Exception e) {
+            return true;
         }
     }
 
     public void ensureDriverAvailable() {
-        if (!isDriverAlive()) {
+        if (isDriverAlive()) {
             reinitializeUnsafe();
         }
     }
