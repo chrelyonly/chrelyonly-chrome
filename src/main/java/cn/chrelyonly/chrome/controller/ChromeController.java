@@ -1,5 +1,6 @@
 package cn.chrelyonly.chrome.controller;
 
+import cn.chrelyonly.chrome.component.R;
 import cn.chrelyonly.chrome.service.SeleniumWebDriverManager;
 import com.alibaba.fastjson2.JSONObject;
 import jakarta.servlet.http.HttpServletResponse;
@@ -75,5 +76,21 @@ public class ChromeController {
         }
         byte[] imageBytes = seleniumWebDriverManager.htmlScreenshot(html,htmlScreenshotClassName,sleep,htmlScreenshotClassId);
         responseContent(response, imageBytes);
+    }
+
+    /**
+     * 手搓抖音视频解析
+     */
+    @PostMapping("/getDyVideo")
+    public R getDyVideo( @RequestBody JSONObject body) {
+        String url = body.getString("url");
+        Integer sleep = body.getInteger("sleep");
+        String htmlClassName = body.getString("htmlClassName");
+        String htmlClassId = body.getString("htmlClassId");
+        if (url == null) {
+            return R.fail("错误的url");
+        }
+        var res = seleniumWebDriverManager.getDyVideo(url,sleep,htmlClassName,htmlClassId);
+        return R.data(res);
     }
 }

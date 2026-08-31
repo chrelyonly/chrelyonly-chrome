@@ -1,9 +1,10 @@
 package cn.chrelyonly.chrome.service;
 
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-
 import org.jspecify.annotations.NonNull;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -25,11 +26,12 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 持久化 WebDriver 实例的 Selenium 服务类（高性能生产优化版）
+ * 持久化 WebDriver 实例的 Selenium 服务类（风控防御与持久化增强版）
  * @author 11725
  */
 @Service
@@ -49,29 +51,10 @@ public class SeleniumWebDriverManager {
     }
 
     private ChromeOptions createChromeOptions() {
-        ChromeOptions chromeOptions = createOptions();
-
-        // 屏蔽痕迹配置
-        chromeOptions.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
-        chromeOptions.setExperimentalOption("useAutomationExtension", false);
-
-        // 禁用无用功能以提升速度
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        // 屏蔽弹窗与剪贴板权限提示
-        prefs.put("profile.default_content_setting_values.notifications", 2);
-        chromeOptions.setExperimentalOption("prefs", prefs);
-
-        return chromeOptions;
-    }
-
-    private static @NonNull ChromeOptions createOptions() {
         ChromeOptions chromeOptions = new ChromeOptions();
 
-        // 基础性能与稳定性参数优化
+        // 1. 基础性能与稳定性参数优化
         chromeOptions.addArguments(
-                "--headless=new",
                 "--window-size=1920,1080",
                 "--no-sandbox",
                 "--disable-dev-shm-usage", // 防止 Docker 容器内存溢出
@@ -79,9 +62,34 @@ public class SeleniumWebDriverManager {
                 "--disable-ipv6",
                 "--disable-extensions",
                 "--disable-infobars",
-                "--disable-blink-features=AutomationControlled" // 隐藏自动化标志
+                "--disable-external-intent-requests",
+                "--disable-blink-features=AutomationControlled", // 关键：隐藏 Webdriver 标记
+                "--lang=zh-CN,zh",
+                // 建议：如果要维持独立登录态且避免多线程文件锁冲突，可设为固定主目录或针对账号隔离
+                "--user-data-dir=/tmp/chrome-profile"
         );
-        chromeOptions.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36");
+
+        // 2. 防自动化检测开关
+        chromeOptions.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+        chromeOptions.setExperimentalOption("useAutomationExtension", false);
+
+        // 3. 合并所有的 Preference 配置（避免重复 setExperimentalOption 被覆盖）
+        Map<String, Object> prefs = new HashMap<>();
+        // 屏蔽凭据保存与通知
+        prefs.put("credentials_enable_service", false);
+        prefs.put("profile.password_manager_enabled", false);
+        prefs.put("profile.default_content_setting_values.notifications", 2);
+
+        // 深度屏蔽 Protocol Handling / 外部协议唤起弹窗 (0: default, 1: allow, 2: block)
+        prefs.put("profile.default_content_setting_values.protocol_handlers", 2);
+        prefs.put("profile.protocol_handler.policy_allowed_origin_settings", Collections.emptyList());
+        prefs.put("protocol_handler.excluded_schemes", Collections.emptyMap());
+
+        chromeOptions.setExperimentalOption("prefs", prefs);
+
+        // 4. 标准 UA 模拟
+        chromeOptions.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+
         return chromeOptions;
     }
 
@@ -120,7 +128,6 @@ public class SeleniumWebDriverManager {
                 reinitializeUnsafe();
                 return;
             }
-            // 使用 轻量级 JS 脚本做心跳，避免刷新页面破坏状态
             driver.executeScript("return 1;");
             log.debug("💓 WebDriver 心跳正常");
         } catch (Exception e) {
@@ -136,7 +143,6 @@ public class SeleniumWebDriverManager {
             return true;
         }
         try {
-            // 通过获取 Session ID 和轻量指令确认存活
             if (driver.getSessionId() == null) return true;
             driver.getWindowHandle();
             return false;
@@ -170,14 +176,25 @@ public class SeleniumWebDriverManager {
             log.info("正在启动 RemoteWebDriver 实例...");
             this.driver = new RemoteWebDriver(remoteUrl, options);
 
-            // 通过 CDP 技术在全局（包括后续打开的所有新页面）永久隐藏 navigator.webdriver
+            // 深度反爬增强：通过 CDP 覆盖底层指纹
             try {
                 WebDriver augmentedDriver = new Augmenter().augment(this.driver);
                 if (augmentedDriver instanceof HasCdp cdpDriver) {
-                    Map<String, Object> params = new HashMap<>();
-                    params.put("source", "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
-                    cdpDriver.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params);
-                    log.debug("CDP 增强成功：已注入全局反爬防检测脚本");
+                    // 1. 抹除 navigator.webdriver
+                    Map<String, Object> params1 = new HashMap<>();
+                    params1.put("source", "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+                    cdpDriver.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params1);
+
+                    // 2. 伪装 Chrome 插件与语言属性，增强抗风控能力
+                    Map<String, Object> params2 = new HashMap<>();
+                    params2.put("source", """
+                        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                        Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh'] });
+                        window.chrome = { runtime: {} };
+                    """);
+                    cdpDriver.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params2);
+
+                    log.debug("CDP 深度增强成功：已注入高级反爬伪装脚本");
                 }
             } catch (Exception cdpEx) {
                 log.warn("CDP 脚本注入失败（可忽略）：{}", cdpEx.getMessage());
@@ -206,19 +223,18 @@ public class SeleniumWebDriverManager {
     /**
      * URL 页面截图
      */
-    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer sleep,String htmlScreenshotClassId) {
+    public byte[] getScreenshot(String url, String htmlScreenshotClassName, Integer sleep, String htmlScreenshotClassId) {
         lock.lock();
         try {
             ensureDriverAvailable();
             log.info("开始访问页面：{}", url);
             driver.get(url);
 
-            if (sleep != null) {
-                Thread.sleep(sleep * 1000L);
-            }else{
-                sleep = 10;
-            }
-            return captureAndResetSize(htmlScreenshotClassName,sleep,htmlScreenshotClassId);
+            int waitTime = (sleep != null && sleep > 0) ? sleep : 10;
+            // 建议优先通过 WebDriverWait 替代硬编码 Thread.sleep，降低占用锁的时间
+            Thread.sleep(waitTime * 1000L);
+
+            return captureAndResetSize(htmlScreenshotClassName, waitTime, htmlScreenshotClassId);
         } catch (Exception e) {
             log.error("页面截图异常 [{}]: {}", url, e.getMessage(), e);
             return loadFallbackImage();
@@ -231,7 +247,7 @@ public class SeleniumWebDriverManager {
     /**
      * HTML 字符串直接渲染并截图
      */
-    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName, Integer sleep,String htmlScreenshotClassId) {
+    public byte[] htmlScreenshot(String html, String htmlScreenshotClassName, Integer sleep, String htmlScreenshotClassId) {
         lock.lock();
         try {
             log.info("渲染自定义 HTML 内容...");
@@ -242,12 +258,11 @@ public class SeleniumWebDriverManager {
                 document.write(arguments[0]);
                 document.close();
             """, html);
-            if (sleep != null) {
-                Thread.sleep(sleep * 1000L);
-            }else{
-                sleep = 10;
-            }
-            return captureAndResetSize(htmlScreenshotClassName, sleep,htmlScreenshotClassId);
+
+            int waitTime = (sleep != null && sleep > 0) ? sleep : 10;
+            Thread.sleep(waitTime * 1000L);
+
+            return captureAndResetSize(htmlScreenshotClassName, waitTime, htmlScreenshotClassId);
         } catch (Exception e) {
             log.error("HTML 渲染截图失败：{}", e.getMessage(), e);
             return new byte[0];
@@ -257,20 +272,13 @@ public class SeleniumWebDriverManager {
         }
     }
 
-    /**
-     * 截图的核心处理逻辑（优先 ID，次选 ClassName，最后全屏）
-     */
     private byte[] captureAndResetSize(String className, int timeoutSeconds, String htmlScreenshotClassId) {
-
-        // 1. 设置全屏分辨率
         Long width = (Long) driver.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);");
         Long height = (Long) driver.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);");
 
         driver.manage().window().setSize(new Dimension(width.intValue(), height.intValue()));
-
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
 
-        // 2. 优先处理指定 ID 的局部截图
         if (htmlScreenshotClassId != null && !htmlScreenshotClassId.isBlank()) {
             WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id(htmlScreenshotClassId)));
             byte[] screenshot = element.getScreenshotAs(OutputType.BYTES);
@@ -279,7 +287,6 @@ public class SeleniumWebDriverManager {
             return screenshot;
         }
 
-        // 3. 次优先处理指定 ClassName 的局部截图
         if (className != null && !className.isBlank()) {
             WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(className)));
             byte[] screenshot = element.getScreenshotAs(OutputType.BYTES);
@@ -288,7 +295,6 @@ public class SeleniumWebDriverManager {
             return screenshot;
         }
 
-        // 4. 默认全屏截图
         byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
         log.info("【全屏截图成功】文件大小 = {} 字节 (分辨率: {}x{})", screenshot.length, width, height);
         return screenshot;
@@ -297,10 +303,12 @@ public class SeleniumWebDriverManager {
     private void resetWindowSizeQuietly() {
         try {
             if (driver != null) {
+                // 执行完任务必须立即导航回空白页，防止页面后台视频播放/异步请求持续消耗 CPU 与触发风控
+                driver.get("about:blank");
                 driver.manage().window().setSize(new Dimension(1920, 1080));
             }
         } catch (Exception e) {
-            log.debug("重置窗口大小跳过（Session 可能不可用）");
+            log.debug("重置窗口状态跳过（Session 可能不可用）");
         }
     }
 
@@ -314,5 +322,98 @@ public class SeleniumWebDriverManager {
             log.error("兜底图片读取异常：{}", ioException.getMessage());
         }
         return new byte[0];
+    }
+
+    /**
+     * 访问网址并解析抖音视频播放地址、标题全文以及话题标签列表 (Hashtags)
+     *
+     * @param url           目标页面 URL
+     * @param sleep         等待时间（秒），若为 null 则默认等待 10 秒
+     * @param htmlClassName 可选，视频容器 Element Class 名称
+     * @param htmlClassId   可选，视频容器 Element ID
+     * @return 包含视频播放地址、标题、Hashtags 的 JSON 结果对象
+     */
+    public JSONObject getDyVideo(String url, Integer sleep, String htmlClassName, String htmlClassId) {
+        lock.lock();
+        JSONObject result = new JSONObject();
+        try {
+            ensureDriverAvailable();
+            log.info("开始提取抖音视频信息，目标页面：{}", url);
+            driver.get(url);
+
+            int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+
+            // 1. 确定视频 Element 定位选择器
+            By locator;
+            if (htmlClassId != null && !htmlClassId.isBlank()) {
+                locator = By.id(htmlClassId);
+            } else if (htmlClassName != null && !htmlClassName.isBlank()) {
+                locator = By.className(htmlClassName);
+            } else {
+                locator = By.cssSelector("xg-video-container video, video");
+            }
+
+            // 2. 等待视频加载
+            WebElement videoElement = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+
+            // 3. 执行 JS 同时提取：视频播放地址 + 网页标题文本 (包含文本与 Hashtag)
+            @SuppressWarnings("unchecked")
+            Map<String, Object> extractData = (Map<String, Object>) driver.executeScript(
+                    "var elem = arguments[0];" +
+                            "if (!elem) return null;" +
+                            "var video = elem.tagName.toLowerCase() === 'video' ? elem : elem.querySelector('video');" +
+                            "if (!video) return null;" +
+                            "var sources = Array.from(video.querySelectorAll('source')).map(s => s.src).filter(Boolean);" +
+                            "var currentSrc = video.currentSrc || video.src || '';" +
+
+                            "/* 提取页面中的标题与话题标签 */" +
+                            "var fullTitle = '';" +
+                            "var hashtags = [];" +
+                            "var titleElem = document.querySelector('h1.p0KxhPuQ, h1');" +
+                            "if (titleElem) {" +
+                            "  fullTitle = titleElem.innerText ? titleElem.innerText.trim() : '';" +
+                            "  var tagNodes = titleElem.querySelectorAll('a');" +
+                            "  hashtags = Array.from(tagNodes).map(a => a.innerText.trim()).filter(Boolean);" +
+                            "}" +
+
+                            "return {" +
+                            "  'currentSrc': currentSrc," +
+                            "  'sources': sources," +
+                            "  'title': fullTitle," +
+                            "  'hashtags': hashtags" +
+                            "};",
+                    videoElement
+            );
+
+            if (extractData != null) {
+                String currentSrc = (String) extractData.get("currentSrc");
+                Object sourcesObj = extractData.get("sources");
+                String title = (String) extractData.get("title");
+                Object hashtags = extractData.get("hashtags");
+
+                result.put("success", true);
+                result.put("currentSrc", currentSrc);
+                result.put("sources", sourcesObj);
+                result.put("title", title);
+                result.put("hashtags", hashtags);
+
+                log.info("【抖音视频解析成功】标题: {}, 标签数: {}, 播放地址: {}", title,
+                        hashtags instanceof JSONArray ? ((JSONArray) hashtags).size() : 0, currentSrc);
+            } else {
+                result.put("success", false);
+                result.put("message", "未定位到 video 标签或视频信息为空");
+                log.warn("【抖音视频解析失败】未在指定的元素中找到 video 标签");
+            }
+
+        } catch (Exception e) {
+            log.error("获取抖音视频地址异常 [{}]: {}", url, e.getMessage(), e);
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        } finally {
+            resetWindowSizeQuietly();
+            lock.unlock();
+        }
+        return result;
     }
 }
