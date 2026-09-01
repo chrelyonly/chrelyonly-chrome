@@ -2,6 +2,8 @@ package cn.chrelyonly.chrome.service;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+
+import cn.chrelyonly.chrome.config.DyConfig;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -325,13 +327,88 @@ public class SeleniumWebDriverManager {
     }
 
     /**
-     * 访问网址并解析抖音视频播放地址、标题全文以及话题标签列表 (Hashtags)
+     * 访问网址，直接注入并执行原版 JS 脚本获取抖音视频全量数据
+     *
+     * @param videoName          等待搜索抖音视频
+     * @param sleep         等待时间（秒），若为 null 则默认等待 10 秒
+     * @return 包含视频全量数据的 JSON 结果对象
+     */
+    public JSONObject getDyListVideo(String videoName, Integer sleep) {
+        lock.lock();
+        JSONObject result = new JSONObject();
+        try {
+            String[] videoNameList = videoName.split("#");
+            Integer number = null;
+            if (videoNameList.length > 1) {
+                try {
+                    number = Integer.parseInt(videoNameList[1].trim());
+                    // 成功解析为数字
+                } catch (NumberFormatException e) {
+                    // 解析失败，不是合法数字
+                    number = 1;
+                }
+            }
+            ensureDriverAvailable();
+            log.info("开始提取抖音视频信息，目标页面：https://www.douyin.com/search/{}", videoNameList[0]);
+            driver.get("https://www.douyin.com/search/" + videoNameList[0]);
+
+            int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+            // 1. 确定视频 Element 定位选择器并等待页面元素加载
+            By locator = By.className("AMqhOzPC");
+            wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+            // 2. 拼接一模一样的 JS 代码并在当前页面作用域中注册 $getVideoInfo 方法
+
+            String injectJs = DyConfig.injectJsDyVideoList;
+
+            JavascriptExecutor jsExecutor = driver;
+
+            // 步骤 A: 向浏览器注入 JS 方法
+            jsExecutor.executeScript(injectJs);
+
+            // 步骤 B: 直接调用注册好的 $getVideoInfo() 方法并拿到返回对象
+            Map<String, Object> extractData;
+            if (number != null){
+//               如果有选择是哪些视频则进入视频获取流程
+                jsExecutor.executeScript("return window.$getVideoList(" + (number) + ");");
+//                当传入了数字并点击跳转后,则获取视频详情,然后等待视频加载
+//                wait.until(ExpectedConditions.presenceOfElementLocated(By.className("NA7vT_tM")));
+                String script = "return new URLSearchParams(window.location.search).get('modal_id');";
+                String modalId = (String) jsExecutor.executeScript(script);
+//                然后尝试调用 getDyVideo
+                return getDyVideo("https://www.douyin.com/video/" + modalId,1,"xg-video-container",null);
+            }else{
+                extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoList();");
+            }
+
+            if (extractData != null) {
+                result.put("success", true);
+                result.putAll(extractData);
+            } else {
+                result.put("success", false);
+                result.put("message", "未定位到 video 标签或执行 $getVideoList() 结果为空");
+                log.warn("【抖音视频解析失败】脚本未捕获到有效视频节点");
+            }
+
+        } catch (Exception e) {
+            log.error("获取抖音视频地址异常 [https://www.douyin.com/search/{}]: {}", videoName, e.getMessage(), e);
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        } finally {
+            resetWindowSizeQuietly();
+            lock.unlock();
+        }
+        return result;
+    }
+
+    /**
+     * 访问网址，直接注入并执行原版 JS 脚本获取抖音视频全量数据
      *
      * @param url           目标页面 URL
      * @param sleep         等待时间（秒），若为 null 则默认等待 10 秒
      * @param htmlClassName 可选，视频容器 Element Class 名称
      * @param htmlClassId   可选，视频容器 Element ID
-     * @return 包含视频播放地址、标题、Hashtags 的 JSON 结果对象
+     * @return 包含视频全量数据的 JSON 结果对象
      */
     public JSONObject getDyVideo(String url, Integer sleep, String htmlClassName, String htmlClassId) {
         lock.lock();
@@ -344,66 +421,44 @@ public class SeleniumWebDriverManager {
             int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
 
-            // 1. 确定视频 Element 定位选择器
+            // 1. 确定视频 Element 定位选择器并等待页面元素加载
             By locator;
             if (htmlClassId != null && !htmlClassId.isBlank()) {
                 locator = By.id(htmlClassId);
             } else if (htmlClassName != null && !htmlClassName.isBlank()) {
                 locator = By.className(htmlClassName);
             } else {
-                locator = By.cssSelector("xg-video-container video, video");
+                locator = By.cssSelector("[data-e2e='feed-active-video'], [data-e2e='video-detail'], video");
             }
 
-            // 2. 等待视频加载
-            WebElement videoElement = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+            wait.until(ExpectedConditions.presenceOfElementLocated(locator));
 
-            // 3. 执行 JS 同时提取：视频播放地址 + 网页标题文本 (包含文本与 Hashtag)
+            // 适当等待渲染（评论区和互动指标异步加载）
+            Thread.sleep(1000);
+
+            // 2. 拼接一模一样的 JS 代码并在当前页面作用域中注册 $getVideoInfo 方法
+            String injectJs = DyConfig.injectJsDyVideo;
+
+
+            JavascriptExecutor jsExecutor = driver;
+
+            // 步骤 A: 向浏览器注入 JS 方法
+            jsExecutor.executeScript(injectJs);
+
+            // 步骤 B: 直接调用注册好的 $getVideoInfo() 方法并拿到返回对象
             @SuppressWarnings("unchecked")
-            Map<String, Object> extractData = (Map<String, Object>) driver.executeScript(
-                    "var elem = arguments[0];" +
-                            "if (!elem) return null;" +
-                            "var video = elem.tagName.toLowerCase() === 'video' ? elem : elem.querySelector('video');" +
-                            "if (!video) return null;" +
-                            "var sources = Array.from(video.querySelectorAll('source')).map(s => s.src).filter(Boolean);" +
-                            "var currentSrc = video.currentSrc || video.src || '';" +
-
-                            "/* 提取页面中的标题与话题标签 */" +
-                            "var fullTitle = '';" +
-                            "var hashtags = [];" +
-                            "var titleElem = document.querySelector('h1.p0KxhPuQ, h1');" +
-                            "if (titleElem) {" +
-                            "  fullTitle = titleElem.innerText ? titleElem.innerText.trim() : '';" +
-                            "  var tagNodes = titleElem.querySelectorAll('a');" +
-                            "  hashtags = Array.from(tagNodes).map(a => a.innerText.trim()).filter(Boolean);" +
-                            "}" +
-
-                            "return {" +
-                            "  'currentSrc': currentSrc," +
-                            "  'sources': sources," +
-                            "  'title': fullTitle," +
-                            "  'hashtags': hashtags" +
-                            "};",
-                    videoElement
-            );
+            Map<String, Object> extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoInfo();");
 
             if (extractData != null) {
-                String currentSrc = (String) extractData.get("currentSrc");
-                Object sourcesObj = extractData.get("sources");
-                String title = (String) extractData.get("title");
-                Object hashtags = extractData.get("hashtags");
-
                 result.put("success", true);
-                result.put("currentSrc", currentSrc);
-                result.put("sources", sourcesObj);
-                result.put("title", title);
-                result.put("hashtags", hashtags);
+                result.putAll(extractData);
 
-                log.info("【抖音视频解析成功】标题: {}, 标签数: {}, 播放地址: {}", title,
-                        hashtags instanceof JSONArray ? ((JSONArray) hashtags).size() : 0, currentSrc);
+                log.info("【抖音视频全量解析成功】标题: {}, 播放地址: {}",
+                        extractData.get("title"), extractData.get("currentSrc"));
             } else {
                 result.put("success", false);
-                result.put("message", "未定位到 video 标签或视频信息为空");
-                log.warn("【抖音视频解析失败】未在指定的元素中找到 video 标签");
+                result.put("message", "未定位到 video 标签或执行 $getVideoInfo() 结果为空");
+                log.warn("【抖音视频解析失败】脚本未捕获到有效视频节点");
             }
 
         } catch (Exception e) {
@@ -416,4 +471,100 @@ public class SeleniumWebDriverManager {
         }
         return result;
     }
+
+
+
+
+//    /**
+//     * 访问网址并解析抖音视频播放地址、标题全文以及话题标签列表 (Hashtags)
+//     *
+//     * @param url           目标页面 URL
+//     * @param sleep         等待时间（秒），若为 null 则默认等待 10 秒
+//     * @param htmlClassName 可选，视频容器 Element Class 名称
+//     * @param htmlClassId   可选，视频容器 Element ID
+//     * @return 包含视频播放地址、标题、Hashtags 的 JSON 结果对象
+//     */
+//    public JSONObject getDyVideo(String url, Integer sleep, String htmlClassName, String htmlClassId) {
+//        lock.lock();
+//        JSONObject result = new JSONObject();
+//        try {
+//            ensureDriverAvailable();
+//            log.info("开始提取抖音视频信息，目标页面：{}", url);
+//            driver.get(url);
+//
+//            int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
+//            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+//
+//            // 1. 确定视频 Element 定位选择器
+//            By locator;
+//            if (htmlClassId != null && !htmlClassId.isBlank()) {
+//                locator = By.id(htmlClassId);
+//            } else if (htmlClassName != null && !htmlClassName.isBlank()) {
+//                locator = By.className(htmlClassName);
+//            } else {
+//                locator = By.cssSelector("xg-video-container video, video");
+//            }
+//
+//            // 2. 等待视频加载
+//            WebElement videoElement = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+//
+//            // 3. 执行 JS 同时提取：视频播放地址 + 网页标题文本 (包含文本与 Hashtag)
+//            @SuppressWarnings("unchecked")
+//            Map<String, Object> extractData = (Map<String, Object>) driver.executeScript(
+//                    "var elem = arguments[0];" +
+//                            "if (!elem) return null;" +
+//                            "var video = elem.tagName.toLowerCase() === 'video' ? elem : elem.querySelector('video');" +
+//                            "if (!video) return null;" +
+//                            "var sources = Array.from(video.querySelectorAll('source')).map(s => s.src).filter(Boolean);" +
+//                            "var currentSrc = video.currentSrc || video.src || '';" +
+//
+//                            "/* 提取页面中的标题与话题标签 */" +
+//                            "var fullTitle = '';" +
+//                            "var hashtags = [];" +
+//                            "var titleElem = document.querySelector('h1.p0KxhPuQ, h1');" +
+//                            "if (titleElem) {" +
+//                            "  fullTitle = titleElem.innerText ? titleElem.innerText.trim() : '';" +
+//                            "  var tagNodes = titleElem.querySelectorAll('a');" +
+//                            "  hashtags = Array.from(tagNodes).map(a => a.innerText.trim()).filter(Boolean);" +
+//                            "}" +
+//
+//                            "return {" +
+//                            "  'currentSrc': currentSrc," +
+//                            "  'sources': sources," +
+//                            "  'title': fullTitle," +
+//                            "  'hashtags': hashtags" +
+//                            "};",
+//                    videoElement
+//            );
+//
+//            if (extractData != null) {
+//                String currentSrc = (String) extractData.get("currentSrc");
+//                Object sourcesObj = extractData.get("sources");
+//                String title = (String) extractData.get("title");
+//                Object hashtags = extractData.get("hashtags");
+//
+//                result.put("success", true);
+//                result.put("currentSrc", currentSrc);
+//                result.put("sources", sourcesObj);
+//                result.put("title", title);
+//                result.put("hashtags", hashtags);
+//
+//                log.info("【抖音视频解析成功】标题: {}, 标签数: {}, 播放地址: {}", title,
+//                        hashtags instanceof JSONArray ? ((JSONArray) hashtags).size() : 0, currentSrc);
+//            } else {
+//                result.put("success", false);
+//                result.put("message", "未定位到 video 标签或视频信息为空");
+//                log.warn("【抖音视频解析失败】未在指定的元素中找到 video 标签");
+//            }
+//
+//        } catch (Exception e) {
+//            log.error("获取抖音视频地址异常 [{}]: {}", url, e.getMessage(), e);
+//            result.put("success", false);
+//            result.put("message", e.getMessage());
+//        } finally {
+//            resetWindowSizeQuietly();
+//            lock.unlock();
+//        }
+//        return result;
+//    }
 }

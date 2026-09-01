@@ -93,4 +93,17 @@ public class ChromeController {
         var res = seleniumWebDriverManager.getDyVideo(url,sleep,htmlClassName,htmlClassId);
         return R.data(res);
     }
+    /**
+     * 搜索抖音视频
+     */
+    @PostMapping("/getDyListVideo")
+    public R getDyListVideo( @RequestBody JSONObject body) {
+        String videoName = body.getString("videoName");
+        Integer sleep = body.getInteger("sleep");
+        if (videoName == null) {
+            return R.fail("错误的url");
+        }
+        var res = seleniumWebDriverManager.getDyListVideo(videoName,sleep);
+        return R.data(res);
+    }
 }
