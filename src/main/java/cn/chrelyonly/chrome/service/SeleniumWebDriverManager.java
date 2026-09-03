@@ -451,7 +451,7 @@ public class SeleniumWebDriverManager {
             @SuppressWarnings("unchecked")
             Map<String, Object> extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoInfo();");
             if (extractData.get("sources") != null ){
-                var sources = JSONObject.parseObject(JSONObject.toJSONString(extractData.get("sources")));
+                var sources = JSONArray.parseArray(JSONObject.toJSONString(extractData.get("sources")));
                 if (sources.isEmpty()){
                     try (HttpResponse httpResponse = HttpRequest
                             .get("https://gateway.diadi.cn/api/parse?app_secret=1xoHycbECYHIqoMcrtvYvXOuVHCjEczJv&url=" + url)
