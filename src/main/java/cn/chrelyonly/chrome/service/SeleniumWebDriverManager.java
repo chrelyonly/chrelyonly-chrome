@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 
 import cn.chrelyonly.chrome.config.DyConfig;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -448,7 +450,20 @@ public class SeleniumWebDriverManager {
             // 步骤 B: 直接调用注册好的 $getVideoInfo() 方法并拿到返回对象
             @SuppressWarnings("unchecked")
             Map<String, Object> extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoInfo();");
-
+            if (extractData.get("sources") != null ){
+                var sources = JSONObject.parseObject(JSONObject.toJSONString(extractData.get("sources")));
+                if (sources.isEmpty()){
+                    try (HttpResponse httpResponse = HttpRequest
+                            .get("https://gateway.diadi.cn/api/parse?app_secret=1xoHycbECYHIqoMcrtvYvXOuVHCjEczJv&url=" + url)
+                            .execute()) {
+                        JSONObject res = JSONObject.parseObject(httpResponse.body());
+                        if (res.getInteger("code") == 0){
+                            JSONArray jsonArray = res.getJSONObject("data").getJSONArray("video");
+                            extractData.put("sources",jsonArray);
+                        }
+                    }
+                }
+            }
             if (extractData != null) {
                 result.put("success", true);
                 result.putAll(extractData);
