@@ -352,7 +352,7 @@ public class SeleniumWebDriverManager {
             }
             ensureDriverAvailable();
             log.info("开始提取抖音视频信息，目标页面：https://www.douyin.com/search/{}", videoNameList[0]);
-            driver.get("https://www.douyin.com/search/" + videoNameList[0]);
+            driver.get("https://www.douyin.com/jingxuan/search/" + videoNameList[0]);
 
             int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
@@ -451,18 +451,7 @@ public class SeleniumWebDriverManager {
             @SuppressWarnings("unchecked")
             Map<String, Object> extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoInfo();");
             if (extractData.get("sources") != null ){
-                var sources = JSONArray.parseArray(JSONObject.toJSONString(extractData.get("sources")));
-                if (sources.isEmpty()){
-                    try (HttpResponse httpResponse = HttpRequest
-                            .get("https://gateway.diadi.cn/api/parse?app_secret=1xoHycbECYHIqoMcrtvYvXOuVHCjEczJv&url=" + url)
-                            .execute()) {
-                        JSONObject res = JSONObject.parseObject(httpResponse.body());
-                        if (res.getInteger("code") == 0){
-                            JSONArray jsonArray = res.getJSONObject("data").getJSONArray("video");
-                            extractData.put("sources",jsonArray);
-                        }
-                    }
-                }
+                getVideoUrl(extractData,url,false);
             }
             if (extractData != null) {
                 result.put("success", true);
@@ -489,6 +478,27 @@ public class SeleniumWebDriverManager {
 
 
 
+    private void getVideoUrl(Map<String, Object> extractData,String url,boolean flag){
+        var sources = JSONArray.parseArray(JSONObject.toJSONString(extractData.get("sources")));
+        if (sources.isEmpty()){
+            try (HttpResponse httpResponse = HttpRequest
+                    .get("https://gateway.diadi.cn/api/parse?app_secret=1xoHycbECYHIqoMcrtvYvXOuVHCjEczJv&url=" + url)
+                    .execute()) {
+                JSONObject res = JSONObject.parseObject(httpResponse.body());
+                if (res.getInteger("code") == 0){
+                    JSONArray jsonArray = res.getJSONObject("data").getJSONArray("video");
+                    extractData.put("sources",jsonArray);
+                }else{
+//                    尝试重复获取 多次重试
+                    if (flag){
+                        return;
+                    }else{
+                        getVideoUrl(extractData,url,true);
+                    }
+                }
+            }
+        }
+    }
 
 //    /**
 //     * 访问网址并解析抖音视频播放地址、标题全文以及话题标签列表 (Hashtags)
