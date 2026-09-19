@@ -505,8 +505,8 @@ public class SeleniumWebDriverManager {
                             JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONObject("data").getJSONObject("media").getJSONObject("video").getJSONArray("urls");
                             extractData.put("sources",jsonArray);
                         }
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
+                    } catch (Exception e) {
+
                     }
 
 
