@@ -351,7 +351,7 @@ public class SeleniumWebDriverManager {
                 }
             }
             ensureDriverAvailable();
-            log.info("开始提取抖音视频信息，目标页面：https://www.douyin.com/search/{}", videoNameList[0]);
+            log.info("开始提取抖音视频信息，目标页面：https://www.douyin.com/jingxuan/search/{}", videoNameList[0]);
             driver.get("https://www.douyin.com/jingxuan/search/" + videoNameList[0]);
 
             // 适当等待渲染（评论区和互动指标异步加载）
@@ -380,7 +380,7 @@ public class SeleniumWebDriverManager {
                 String script = "return new URLSearchParams(window.location.search).get('modal_id');";
                 String modalId = (String) jsExecutor.executeScript(script);
 //                然后尝试调用 getDyVideo
-                return getDyVideo("https://www.douyin.com/video/" + modalId,1,"xg-video-container",null);
+                return getDyVideo("https://www.douyin.com/jingxuan/video/" + modalId,1,"xg-video-container",null);
             }else{
                 extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoList();");
             }
