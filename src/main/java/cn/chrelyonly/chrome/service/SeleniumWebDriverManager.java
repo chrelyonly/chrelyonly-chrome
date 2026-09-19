@@ -450,10 +450,11 @@ public class SeleniumWebDriverManager {
             // 步骤 B: 直接调用注册好的 $getVideoInfo() 方法并拿到返回对象
             @SuppressWarnings("unchecked")
             Map<String, Object> extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoInfo();");
-            if (extractData.get("sources") != null ){
-                getVideoUrl(extractData,url,false);
-            }
             if (extractData != null) {
+                JSONArray temp = JSONArray.parseArray(extractData.get("sources").toString());
+                if (extractData.get("sources") == null || temp.isEmpty() ){
+                    getVideoUrl(extractData,url,false);
+                }
                 result.put("success", true);
                 result.putAll(extractData);
 
@@ -482,19 +483,28 @@ public class SeleniumWebDriverManager {
         var sources = JSONArray.parseArray(JSONObject.toJSONString(extractData.get("sources")));
         if (sources.isEmpty()){
             try (HttpResponse httpResponse = HttpRequest
-                    .get("https://gateway.diadi.cn/api/parse?app_secret=1xoHycbECYHIqoMcrtvYvXOuVHCjEczJv&url=" + url)
+                    .post("https://demo.douyin.wtf/api/v1/parse")
+                    .header("Authorization","Bearer dtk_df6373c8dd2f_b39OkgSfqI2BN8HP-jPxo3k5bvkyxvrg")
+                    .body(new JSONObject(){{
+                        put("url",url);
+                        put("include_raw","false");
+                    }}.toJSONString())
                     .execute()) {
                 JSONObject res = JSONObject.parseObject(httpResponse.body());
-                if (res.getInteger("code") == 0){
-                    JSONArray jsonArray = res.getJSONObject("data").getJSONArray("video");
-                    extractData.put("sources",jsonArray);
-                }else{
-//                    尝试重复获取 多次重试
-                    if (flag){
-                        return;
-                    }else{
-                        getVideoUrl(extractData,url,true);
+                if (res.getBoolean("success")){
+                    try (HttpResponse httpResponse2 = HttpRequest
+                            .get(" https://demo.douyin.wtf/api/v1/tasks/" + res.getJSONObject("data").getString("task_id"))
+                            .header("Authorization", "Bearer dtk_df6373c8dd2f_b39OkgSfqI2BN8HP-jPxo3k5bvkyxvrg")
+                            .execute()) {
+                        JSONObject jsonObject = JSONObject.parseObject(httpResponse2.body());
+                        if (jsonObject.getBoolean("success")) {
+                            JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONObject("data").getJSONObject("media").getJSONObject("video").getJSONArray("urls");
+                            extractData.put("sources",jsonArray);
+                        }
                     }
+
+
+
                 }
             }
         }
