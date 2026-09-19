@@ -354,6 +354,8 @@ public class SeleniumWebDriverManager {
             log.info("开始提取抖音视频信息，目标页面：https://www.douyin.com/search/{}", videoNameList[0]);
             driver.get("https://www.douyin.com/jingxuan/search/" + videoNameList[0]);
 
+            // 适当等待渲染（评论区和互动指标异步加载）
+            Thread.sleep(2000);
             int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
             // 1. 确定视频 Element 定位选择器并等待页面元素加载
@@ -496,13 +498,16 @@ public class SeleniumWebDriverManager {
                             .get(" https://demo.douyin.wtf/api/v1/tasks/" + res.getJSONObject("data").getString("task_id"))
                             .header("Authorization", "Bearer dtk_df6373c8dd2f_b39OkgSfqI2BN8HP-jPxo3k5bvkyxvrg")
                             .execute()) {
+                        // 适当等待渲染（评论区和互动指标异步加载）
+                        Thread.sleep(2000);
                         JSONObject jsonObject = JSONObject.parseObject(httpResponse2.body());
                         if (jsonObject.getBoolean("success")) {
                             JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONObject("data").getJSONObject("media").getJSONObject("video").getJSONArray("urls");
                             extractData.put("sources",jsonArray);
                         }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
                     }
-
 
 
                 }
