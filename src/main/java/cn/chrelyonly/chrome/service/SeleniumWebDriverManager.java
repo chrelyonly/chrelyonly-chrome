@@ -123,24 +123,24 @@ public class SeleniumWebDriverManager {
         reinitialize();
     }
 
-    @Scheduled(fixedDelay = 1000 * 60 * 3) // 每 3 分钟心跳检测
-    public void heartbeat() {
-        lock.lock();
-        try {
-            if (isDriverAlive()) {
-                log.warn("💀 心跳检测：WebDriver 已失效，正在重建...");
-                reinitializeUnsafe();
-                return;
-            }
-            driver.executeScript("return 1;");
-            log.debug("💓 WebDriver 心跳正常");
-        } catch (Exception e) {
-            log.error("💀 心跳检测失败，触发强制重启：{}", e.getMessage());
-            reinitializeUnsafe();
-        } finally {
-            lock.unlock();
-        }
-    }
+//    @Scheduled(fixedDelay = 1000 * 60 * 3) // 每 3 分钟心跳检测
+//    public void heartbeat() {
+//        lock.lock();
+//        try {
+//            if (isDriverAlive()) {
+//                log.warn("💀 心跳检测：WebDriver 已失效，正在重建...");
+//                reinitializeUnsafe();
+//                return;
+//            }
+//            driver.executeScript("return 1;");
+//            log.debug("💓 WebDriver 心跳正常");
+//        } catch (Exception e) {
+//            log.error("💀 心跳检测失败，触发强制重启：{}", e.getMessage());
+//            reinitializeUnsafe();
+//        } finally {
+//            lock.unlock();
+//        }
+//    }
 
     public boolean isDriverAlive() {
         if (driver == null) {
