@@ -419,7 +419,7 @@ public class SeleniumWebDriverManager {
         try {
             ensureDriverAvailable();
             log.info("开始提取抖音视频信息，目标页面：{}", url);
-//            driver.get(url);
+            driver.get(url);
 
             int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
