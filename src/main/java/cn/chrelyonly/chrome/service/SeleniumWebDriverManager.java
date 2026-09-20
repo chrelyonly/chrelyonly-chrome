@@ -60,7 +60,6 @@ public class SeleniumWebDriverManager {
         // 1. 基础性能与稳定性参数优化
         chromeOptions.addArguments(
                 "--window-size=1920,1080",
-                "--no-sandbox",
                 "--disable-dev-shm-usage", // 防止 Docker 容器内存溢出
                 "--disable-gpu",
                 "--disable-ipv6",
