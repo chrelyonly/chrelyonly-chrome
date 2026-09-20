@@ -60,13 +60,6 @@ public class SeleniumWebDriverManager {
         // 1. 基础性能与稳定性参数优化
         chromeOptions.addArguments(
                 "--window-size=1920,1080",
-                "--disable-dev-shm-usage", // 防止 Docker 容器内存溢出
-                "--disable-gpu",
-                "--disable-ipv6",
-                "--disable-extensions",
-                "--disable-infobars",
-                "--disable-external-intent-requests",
-                "--disable-blink-features=AutomationControlled", // 关键：隐藏 Webdriver 标记
                 "--lang=zh-CN,zh",
                 // 建议：如果要维持独立登录态且避免多线程文件锁冲突，可设为固定主目录或针对账号隔离
                 "--user-data-dir=/tmp/chrome-profile"
