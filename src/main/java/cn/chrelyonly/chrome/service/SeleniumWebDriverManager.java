@@ -437,7 +437,7 @@ public class SeleniumWebDriverManager {
             wait.until(ExpectedConditions.presenceOfElementLocated(locator));
 
             // 适当等待渲染（评论区和互动指标异步加载）
-            Thread.sleep(1000);
+//            Thread.sleep(1000);
 
             // 2. 拼接一模一样的 JS 代码并在当前页面作用域中注册 $getVideoInfo 方法
             String injectJs = DyConfig.injectJsDyVideo;
