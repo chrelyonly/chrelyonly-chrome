@@ -380,7 +380,7 @@ public class SeleniumWebDriverManager {
                 String script = "return new URLSearchParams(window.location.search).get('modal_id');";
                 String modalId = (String) jsExecutor.executeScript(script);
 //                然后尝试调用 getDyVideo
-                return getDyVideo("https://www.douyin.com/video/" + modalId,1,"xg-video-container",null);
+                return getDyVideo("https://www.douyin.com/video/" + modalId,10,"xg-video-container",null);
             }else{
                 extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoList();");
             }
