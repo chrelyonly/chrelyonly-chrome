@@ -420,7 +420,7 @@ public class SeleniumWebDriverManager {
         try {
             ensureDriverAvailable();
             log.info("开始提取抖音视频信息，目标页面：{}", url);
-//            driver.get(url);
+            driver.get(url);
 
             int timeoutSeconds = (sleep != null && sleep > 0) ? sleep : 10;
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
@@ -485,31 +485,15 @@ public class SeleniumWebDriverManager {
         var sources = JSONArray.parseArray(JSONObject.toJSONString(extractData.get("sources")));
         if (sources.isEmpty()){
             try (HttpResponse httpResponse = HttpRequest
-                    .post("https://demo.douyin.wtf/api/v1/parse")
-                    .header("Authorization","Bearer dtk_df6373c8dd2f_b39OkgSfqI2BN8HP-jPxo3k5bvkyxvrg")
-                    .body(new JSONObject(){{
-                        put("url",url);
-                        put("include_raw","false");
-                    }}.toJSONString())
+                    .get("https://xm.xkeji.cn/index/miniapp/watermarkAnalysis?url=" + url)
+                    .header("user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf2541d0c) XWEB/25510")
+                    .header("referer","https://servicewechat.com/wx4babfdf91608acf4/118/page-frame.html")
                     .execute()) {
                 JSONObject res = JSONObject.parseObject(httpResponse.body());
-                if (res.getBoolean("success")){
-                    try (HttpResponse httpResponse2 = HttpRequest
-                            .get(" https://demo.douyin.wtf/api/v1/tasks/" + res.getJSONObject("data").getString("task_id"))
-                            .header("Authorization", "Bearer dtk_df6373c8dd2f_b39OkgSfqI2BN8HP-jPxo3k5bvkyxvrg")
-                            .execute()) {
-                        // 适当等待渲染（评论区和互动指标异步加载）
-                        Thread.sleep(2000);
-                        JSONObject jsonObject = JSONObject.parseObject(httpResponse2.body());
-                        if (jsonObject.getBoolean("success")) {
-                            JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONObject("data").getJSONObject("media").getJSONObject("video").getJSONArray("urls");
-                            extractData.put("sources",jsonArray);
-                        }
-                    } catch (Exception e) {
-
-                    }
-
-
+                if (res.getInteger("code") == 200){
+                    JSONArray jsonArray = new JSONArray();
+                    jsonArray.add(res.getJSONObject("data").getString("url"));
+                    extractData.put("sources",jsonArray);
                 }
             }
         }
