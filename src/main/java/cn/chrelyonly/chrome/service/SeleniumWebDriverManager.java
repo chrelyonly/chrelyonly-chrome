@@ -444,10 +444,10 @@ public class SeleniumWebDriverManager {
             @SuppressWarnings("unchecked")
             Map<String, Object> extractData = (Map<String, Object>) jsExecutor.executeScript("return window.$getVideoInfo();");
             if (extractData != null) {
-                JSONArray temp = JSONArray.parseArray(extractData.get("sources").toString());
-                if (extractData.get("sources") == null || temp.isEmpty() ){
-                    getVideoUrl(extractData,url,false);
-                }
+//                JSONArray temp = JSONArray.parseArray(extractData.get("sources").toString());
+//                if (extractData.get("sources") == null || temp.isEmpty() ){
+                getVideoUrl(extractData,url,false);
+//                }
                 result.put("success", true);
                 result.putAll(extractData);
 
